@@ -5,5 +5,6 @@ import kotlin.time.Duration
 // jotham pls
 
 interface PackageService {
-    fun getLimit(p: Package): Duration
+    // null when package has no limit
+    fun getLimit(p: Package): Duration?
 }
