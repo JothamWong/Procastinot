@@ -81,7 +81,7 @@ class OverlayService : Service() {
             it.gravity = Gravity.LEFT or Gravity.BOTTOM
         }
         val overlay = overlay
-        textView.text = "WAHT"
+        textView.text = "04:30"
         windowManager.addView(overlay, layoutParams)
 
         return START_STICKY
