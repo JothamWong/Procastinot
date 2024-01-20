@@ -22,7 +22,7 @@ class MyAccessibilityService : AccessibilityService() {
     public fun addTrackPackages(packageName: String) {
         trackedPackages.add(packageName)
     }
-    public fun removeTrackPages(packageName: String) {
+    public fun removeTrackPackages(packageName: String) {
         trackedPackages.remove(packageName)
     }
 
