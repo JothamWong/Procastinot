@@ -205,10 +205,9 @@ fun Content(
         val savedTime = loadTimeLimit(context, packageName)
         val splitSavedTime = savedTime.split(":")
 
-        // Extract hour, minute, and second from the saved time, providing default values if not set
-        hourUsage = if (splitSavedTime.size > 0) splitSavedTime[0] else "00"
-        minuteUsage = if (splitSavedTime.size > 1) splitSavedTime[1] else "00"
-        secondUsage = if (splitSavedTime.size > 2) splitSavedTime[2] else "00"
+        hourUsage = "00"
+        minuteUsage = "00"
+        secondUsage = "00"
 
         var hourError = false
         var minuteError = false
