@@ -6,9 +6,28 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
 
 class MyAccessibilityService : AccessibilityService() {
+    // in blacklist.kt, update blacklist, then call setter method here to update tracked packages
+    // on initialization, blacklist.kt should expose a public fun to initialize the tracked packages
+
+    private val trackedPackages = mutableSetOf<String>("com.reddit.frontpage")
+    private val appForegroundTime = hashMapOf<String, Long>()
+    private val appTrackStart = hashMapOf<String, Long>()
+    private val appTrackEnd = hashMapOf<String, Long>()
+
+    public fun addTrackPackages(packageName: String) {
+        trackedPackages.add(packageName)
+    }
+    public fun removeTrackPages(packageName: String) {
+        trackedPackages.remove(packageName)
+    }
+
+    public fun getAppForegroundTime(packageName: String): Long {
+        return appForegroundTime.getOrDefault(packageName, -1)
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        addTrackPackages("com.reddit.frontpage") // testing
         println("Service connected")
     }
 
@@ -17,7 +36,6 @@ class MyAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
 
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
-//            println("is window changed uwu so manyy signals")
             try {
                 val packageName = windows.filter { it.isFocused }.singleOrNull()?.root?.packageName.toString()
                 if(packageName != "null" && packageName != lastUsedPackage) {
@@ -44,15 +62,14 @@ class MyAccessibilityService : AccessibilityService() {
                         // Init package time
                         // Update entry time of packageName if packageName is tracked
                         if (!appTrackStart.containsKey(packageName)) {
-                            appTrackStart[packageName] = currentTime;
+                            appTrackStart[packageName] = currentTime
                             appForegroundTime[packageName] = 0
                             println("wow tracking virgin, popping app cherry")
                             println("$packageName's new track time starts at $currentTime")
                         } else {
                             // Check if it has been 24 hours since app was being tracked
                             val lastStartedTracking = appTrackStart[packageName]!!
-//                            if (currentTime - lastStartedTracking > 1000 * 60 * 60 * 24) {
-                            if (currentTime - lastStartedTracking > 1000 * 30) {
+                            if (currentTime - lastStartedTracking > 1000 * 60 * 60 * 24) {
                                 appTrackStart[packageName] = currentTime
                                 appForegroundTime[packageName] = 0
                                 println("w0w new day new app")
@@ -62,7 +79,7 @@ class MyAccessibilityService : AccessibilityService() {
                     }
 
                     // Update lastUsedPackage
-                    lastUsedPackage = packageName;
+                    lastUsedPackage = packageName
                 }
 
             } catch (e: NullPointerException) {
@@ -70,22 +87,21 @@ class MyAccessibilityService : AccessibilityService() {
             }
         }
         if (event?.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            val scrollY = event.scrollDeltaY
             val packageName = event.packageName.toString()
             if(trackedPackages.contains(packageName)) {
                 val currentTime = System.currentTimeMillis()
                 val appStartTime = appTrackStart[packageName]!!
                 val timeSpent = currentTime - appStartTime
                 val totalTime = appForegroundTime[packageName]!! + timeSpent
+                appForegroundTime[packageName] = totalTime
 
-                // For now, we'll just log the scroll values
-                println("Scroll Event: Y=$scrollY, Time you last entered this app=$appStartTime")
+                // Log usage values
+                println("Scroll Event: Time you last entered this app=$appStartTime")
                 println("Time spent scrolling since last app entry=$timeSpent")
                 println("Total app usage=$totalTime")
 
                 // Check if it has been 24 hours since app was being tracked
-    //            if(totalTime > 1000 * 60 * 60 * 24) {
-                if(totalTime > 1000 * 30) {
+                if(totalTime > 1000 * 60 * 60 * 24) {
                     appTrackStart[packageName] = currentTime
                     appForegroundTime[packageName] = 0
                     println("w0w new day new app")
@@ -94,12 +110,6 @@ class MyAccessibilityService : AccessibilityService() {
             }
         }
     }
-
-    private val trackedPackages = setOf("com.reddit.frontpage")
-    private val appForegroundTime = hashMapOf<String, Long>()
-    private val appTrackStart = hashMapOf<String, Long>()
-    private val appTrackEnd = hashMapOf<String, Long>()
-
 
 
     override fun onInterrupt() {
