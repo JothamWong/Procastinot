@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.drawable.toBitmap
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class Blacklist : ComponentActivity() {
 
@@ -139,6 +142,7 @@ fun Content(
                 Text(text = "Choose apps to unblacklist")
             } else if (idx <= blacklistedApps.size) {
                 val item: ResolveInfo = blacklistedApps[idx - 1]
+                val packageName = item.activityInfo.packageName
                 ElevatedCard(
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = 6.dp
@@ -159,7 +163,7 @@ fun Content(
                                 .padding(2.dp)
                         )
                         Text(
-                            text = getAppName(pm, item),
+                            text = getAppName(pm, item) + " " + loadTimeLimit(context, packageName),
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .align(alignment = Alignment.CenterVertically)
@@ -265,11 +269,9 @@ fun Content(
 
         hourUsage = "00"
         minuteUsage = "00"
-        secondUsage = "00"
 
         var hourError = false
         var minuteError = false
-        var secondError = false
 
         fun hourValidation(s: String) {
             hourError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 23 && s.length <= 2)
@@ -277,10 +279,6 @@ fun Content(
 
         fun minuteValidation(s: String) {
             minuteError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
-        }
-
-        fun secondValidation(s: String) {
-            secondError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
         }
 
         Dialog(
@@ -357,26 +355,6 @@ fun Content(
                                     )
                             },
                         )
-                        OutlinedTextField(
-                            label = { Text(text = "Second") },
-                            value = secondUsage,
-                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                            onValueChange = {
-                                secondChange(it)
-                                secondValidation(it)
-                            },
-                            modifier = Modifier.weight(.2f),
-                            keyboardActions = KeyboardActions { secondValidation(secondUsage) },
-                            isError = secondError,
-                            trailingIcon = {
-                                if (secondError)
-                                    Icon(
-                                        Icons.Filled.Warning,
-                                        "error",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                            },
-                        )
                     }
                     // TODO: Get usage statistics here from UsageService
                     Row(
@@ -391,8 +369,11 @@ fun Content(
                         }
                         TextButton(
                             onClick = {
-                                if (!hourError && !minuteError && !secondError) {
-                                    val timeLimit = "$hourUsage:$minuteUsage:$secondUsage"
+                                if (!hourError && !minuteError) {
+                                    var hour = hourUsage.toInt()
+                                    var min = minuteUsage.toInt()
+                                    var totalMin = hour * 60 + min
+                                    val timeLimit = totalMin.toDuration(DurationUnit.MINUTES)
                                     saveTimeLimit(
                                         context,
                                         resolvedInfoItem.activityInfo.packageName,
@@ -426,17 +407,18 @@ fun getAppName(pm: PackageManager, resolveInfo: ResolveInfo): String {
     }
 }
 
-fun saveTimeLimit(context: Context, packageName: String, timeLimit: String) {
+fun saveTimeLimit(context: Context, packageName: String, timeLimit: Duration) {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
     sharedPreferences.edit().apply {
-        putString(packageName, timeLimit)
+        putString(packageName, timeLimit.toString())
         apply()
     }
 }
 
-fun loadTimeLimit(context: Context, packageName: String): String {
+fun loadTimeLimit(context: Context, packageName: String): Duration? {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-    return sharedPreferences.getString(packageName, "") ?: ""
+    val timeString =  sharedPreferences.getString(packageName, "")!!
+    return Duration.parseOrNull(timeString)
 }
 
 fun isInteger(s: String): Boolean {
