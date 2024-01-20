@@ -13,6 +13,13 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.view.children
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.concurrent.timer
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
 
 @RequiresApi(Build.VERSION_CODES.R)
 class OverlayService : Service() {
@@ -53,6 +60,24 @@ class OverlayService : Service() {
         applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     }
 
+    private var curDur: Duration? = null
+
+    fun setDuration(dur: Duration?) {
+        if (dur == null) {
+            overlay.visibility = View.GONE
+        } else {
+            overlay.visibility = View.VISIBLE
+            textView.text = dur.toComponents { minutes, seconds, ns ->
+                String.format(
+                    "%02d:%02d",
+                    minutes,
+                    seconds
+                )
+            }
+        }
+        curDur = dur
+    }
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -81,7 +106,20 @@ class OverlayService : Service() {
             it.gravity = Gravity.LEFT or Gravity.BOTTOM
         }
         val overlay = overlay
-        textView.text = "04:30"
+
+        setDuration(Duration.parse("15s"))
+        kotlin.concurrent.timer(period = 1000L, action = {
+            GlobalScope.launch {
+                withContext(Dispatchers.Main) {
+                    if (curDur != null) {
+                        var nDur: Duration? = curDur!!.minus(Duration.parse("1s"))
+                        if (nDur!!.isNegative()) nDur = null;
+                        setDuration(nDur)
+                    }
+                }
+            }
+        });
+
         windowManager.addView(overlay, layoutParams)
 
         return START_STICKY
