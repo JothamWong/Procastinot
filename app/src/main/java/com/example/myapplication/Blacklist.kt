@@ -105,7 +105,7 @@ fun Content(
     val context = LocalContext.current
     val pm = context.packageManager
 
-    var selectedToBlacklistResolveInfo by remember {
+    var chosenIdx by remember {
         mutableStateOf(-1)
     }
     var secondUsage by remember {
@@ -144,7 +144,7 @@ fun Content(
                         defaultElevation = 6.dp
                     ),
                     onClick = {
-                        selectedToBlacklistResolveInfo = idx
+                        chosenIdx = idx
                     },
                     modifier = Modifier
                         .size(width = 240.dp, height = 30.dp),
@@ -173,7 +173,7 @@ fun Content(
                         defaultElevation = 6.dp
                     ),
                     onClick = {
-                        selectedToBlacklistResolveInfo = idx
+                        chosenIdx = idx
                     },
                     modifier = Modifier
                         .size(width = 240.dp, height = 30.dp),
@@ -196,44 +196,66 @@ fun Content(
             }
         }
     }
-//    Text(text = "Choose apps to blacklist")
-//    LazyColumn(
-//        modifier = Modifier.fillMaxWidth(),
-//        horizontalAlignment = Alignment.CenterHorizontally,
-//    ) {
-//        itemsIndexed(nonBlacklistedApps) { idx, item ->
-//            ElevatedCard(
-//                elevation = CardDefaults.cardElevation(
-//                    defaultElevation = 6.dp
-//                ),
-//                onClick = {
-//                    selectedToBlacklistResolveInfo = idx
-//                },
-//                modifier = Modifier
-//                    .size(width = 240.dp, height = 30.dp),
-//            ) {
-//                Row {
-//                    Image(
-//                        bitmap = getAppImageBitmap(pm, item),
-//                        contentDescription = "app icon",
-//                        modifier = Modifier.size(24.dp)
-//                    )
-//                    Text(
-//                        text = getAppName(pm, item),
-//                        textAlign = TextAlign.Center,
-//                        modifier = Modifier
-//                            .align(alignment = Alignment.CenterVertically)
-//                    )
-////                    Text(text = item.resolvePackageName)
-//                }
-//            }
-//        }
-//    }
 
-    if (selectedToBlacklistResolveInfo != -1) {
-        val resolvedInfoItem = nonBlacklistedApps[selectedToBlacklistResolveInfo]
+    if (chosenIdx >= 1 && chosenIdx <= blacklistedApps.size) {
+        val resolvedInfoItem = blacklistedApps[chosenIdx - 1]
         val packageName = resolvedInfoItem.activityInfo.packageName
         val savedTime = loadTimeLimit(context, packageName)
+        println("Package name: " + packageName)
+        println("Saved Time: " + savedTime)
+
+        Dialog(
+            onDismissRequest = { chosenIdx = -1 }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(375.dp)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        bitmap = getAppImageBitmap(pm, resolvedInfoItem),
+                        contentDescription = "Card image"
+                    )
+                    Text(
+                        getAppName(pm, resolvedInfoItem),
+                        modifier = Modifier.padding(all = 16.dp)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        TextButton(
+                            onClick = { chosenIdx = -1 }
+                        ) {
+                            Text("Dismiss")
+                        }
+                        TextButton(
+                            onClick = {
+                                chosenIdx = -1
+                                nonBlacklistedApps.add(resolvedInfoItem)
+                                blacklistedApps.remove(resolvedInfoItem)
+                            }
+                        ) {
+                            Text("Unblacklist")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    if (chosenIdx >= blacklistedApps.size + 1) {
+        val resolvedInfoItem = nonBlacklistedApps[chosenIdx - blacklistedApps.size - 2]
 
         hourUsage = "00"
         minuteUsage = "00"
@@ -256,7 +278,7 @@ fun Content(
         }
 
         Dialog(
-            onDismissRequest = { selectedToBlacklistResolveInfo = -1 }
+            onDismissRequest = { chosenIdx = -1 }
         ) {
             Card(
                 modifier = Modifier
@@ -357,7 +379,7 @@ fun Content(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         TextButton(
-                            onClick = { selectedToBlacklistResolveInfo = -1 }
+                            onClick = { chosenIdx = -1 }
                         ) {
                             Text("Dismiss")
                         }
@@ -370,7 +392,7 @@ fun Content(
                                         resolvedInfoItem.activityInfo.packageName,
                                         timeLimit
                                     )
-                                    selectedToBlacklistResolveInfo = -1
+                                    chosenIdx = -1
                                     blacklistedApps.add(resolvedInfoItem)
                                     nonBlacklistedApps.remove(resolvedInfoItem)
                                 }
@@ -383,11 +405,6 @@ fun Content(
             }
         }
     }
-}
-
-fun isValidTime(text: String): Boolean {
-    return true
-//    return text.matche
 }
 
 fun getAppImageBitmap(pm: PackageManager, resolveInfo: ResolveInfo): ImageBitmap {
