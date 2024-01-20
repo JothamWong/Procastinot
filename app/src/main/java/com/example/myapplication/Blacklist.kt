@@ -147,13 +147,16 @@ fun Content(
                         chosenIdx = idx
                     },
                     modifier = Modifier
-                        .size(width = 240.dp, height = 30.dp),
+                        .size(width = 240.dp, height = 30.dp)
+                        .padding(4.dp),
                 ) {
                     Row {
                         Image(
                             bitmap = getAppImageBitmap(pm, item),
                             contentDescription = "app icon",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(2.dp)
                         )
                         Text(
                             text = getAppName(pm, item),
@@ -176,13 +179,16 @@ fun Content(
                         chosenIdx = idx
                     },
                     modifier = Modifier
-                        .size(width = 240.dp, height = 30.dp),
+                        .size(width = 240.dp, height = 30.dp)
+                        .padding(4.dp),
                 ) {
                     Row {
                         Image(
                             bitmap = getAppImageBitmap(pm, item),
                             contentDescription = "app icon",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(2.dp)
                         )
                         Text(
                             text = getAppName(pm, item),
