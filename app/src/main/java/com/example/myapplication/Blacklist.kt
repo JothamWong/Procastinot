@@ -21,11 +21,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -33,9 +37,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,14 +51,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.drawable.toBitmap
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class Blacklist : ComponentActivity() {
+
+    // In order for the two views to be updated, we need to modify the reference to the list
+    // https://slack-chats.kotlinlang.org/t/506543/hi-how-to-update-composable-when-a-list-changes-by-rember-mu
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Find main activities, disable finding system apps
+        val context = this
+        val pm = context.packageManager
+        val mainIntent = Intent(Intent.ACTION_MAIN, null)
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
+
+
+        var resolvedInfoList: List<ResolveInfo> = pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+        var blacklistedApps: MutableList<ResolveInfo> = resolvedInfoList.filter { resolveInfo -> sharedPreferences.contains(resolveInfo.activityInfo.packageName) }.toMutableStateList()
+        var nonBlacklistedApps: MutableList<ResolveInfo> = resolvedInfoList.filter { resolveInfo -> !sharedPreferences.contains(resolveInfo.activityInfo.packageName) }.toMutableStateList()
+
         super.onCreate(savedInstanceState)
         setContent {
             MyApplicationTheme {
@@ -60,7 +83,10 @@ class Blacklist : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Content()
+                    Content(
+                        blacklistedApps,
+                        nonBlacklistedApps
+                    )
                 }
             }
         }
@@ -69,15 +95,15 @@ class Blacklist : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview
+//@Preview
 @Composable
-fun Content() {
+fun Content(
+    blacklistedApps: MutableList<ResolveInfo>,
+    nonBlacklistedApps: MutableList<ResolveInfo>,
+) {
     val context = LocalContext.current
     val pm = context.packageManager
 
-//    var showDialog by remember {
-//        mutableStateOf(0)
-//    }
     var selectedResolveInfo by remember {
         mutableStateOf(-1)
     }
@@ -99,12 +125,7 @@ fun Content() {
     val hourChange : (String) -> Unit = { it ->
         hourUsage = it
     }
-    // Find main activities, disable finding system apps
-    val mainIntent = Intent(Intent.ACTION_MAIN, null)
-    mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
 
-    var resolvedInfo: List<ResolveInfo> = pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
-//    resolvedInfo = resolvedInfo.filter { resolveInfo -> resolveInfo.resolvePackageName != null }
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -114,7 +135,7 @@ fun Content() {
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ){
-            itemsIndexed(resolvedInfo) {
+            itemsIndexed(nonBlacklistedApps) {
                 idx, item -> ElevatedCard(
                 elevation = CardDefaults.cardElevation(
                     defaultElevation = 6.dp
@@ -143,16 +164,33 @@ fun Content() {
             }
         }
     }
+
     if (selectedResolveInfo != -1) {
-        val resolvedInfoItem = resolvedInfo[selectedResolveInfo]
+        val resolvedInfoItem = nonBlacklistedApps[selectedResolveInfo]
         val packageName = resolvedInfoItem.activityInfo.packageName
         val savedTime = loadTimeLimit(context, packageName)
         val splitSavedTime = savedTime.split(":")
 
         // Extract hour, minute, and second from the saved time, providing default values if not set
-        hourUsage = if (splitSavedTime.size > 0) splitSavedTime[0] else ""
-        minuteUsage = if (splitSavedTime.size > 1) splitSavedTime[1] else ""
-        secondUsage = if (splitSavedTime.size > 2) splitSavedTime[2] else ""
+        hourUsage = if (splitSavedTime.size > 0) splitSavedTime[0] else "00"
+        minuteUsage = if (splitSavedTime.size > 1) splitSavedTime[1] else "00"
+        secondUsage = if (splitSavedTime.size > 2) splitSavedTime[2] else "00"
+
+        var hourError = false
+        var minuteError = false
+        var secondError = false
+
+        fun hourValidation(s: String) {
+            hourError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 23 && s.length <= 2)
+        }
+
+        fun minuteValidation(s: String) {
+            minuteError =  !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
+        }
+
+        fun secondValidation(s: String) {
+            secondError =  !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
+        }
 
         Dialog(
             onDismissRequest = { selectedResolveInfo = -1 }
@@ -190,26 +228,51 @@ fun Content() {
                             label = { Text(text = "Hour")},
                             value=hourUsage,
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                            onValueChange = hourChange,
+                            onValueChange = {
+                                hourChange(it)
+                                hourValidation(it)
+                            },
                             modifier = Modifier
-                                .weight(.2f)
-                                .background(Color.White),
-//                            isError = {hourUsage -> hourUsage.all { char -> char.isDigit() }}
-//                            isError = { hourUsage.all { char -> char.isDigit() }}
+                                .weight(.2f),
+                            keyboardActions = KeyboardActions{hourValidation(hourUsage)},
+//                                .background(Color.White),
+                            isError = hourError,
+                            trailingIcon = {
+                                if (hourError)
+                                    Icon(Icons.Filled.Warning,"error", tint = MaterialTheme.colorScheme.error)
+                            },
                         )
                         OutlinedTextField(
                             label = { Text(text = "Minute")},
                             value=minuteUsage,
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                            onValueChange = minuteChange,
-                            modifier = Modifier.weight(.2f)
+                            onValueChange = {
+                                minuteChange(it)
+                                minuteValidation(it)
+                            },
+                            modifier = Modifier.weight(.2f),
+                            keyboardActions = KeyboardActions{minuteValidation(minuteUsage)},
+                            isError = minuteError,
+                            trailingIcon = {
+                                if (minuteError)
+                                    Icon(Icons.Filled.Warning,"error", tint = MaterialTheme.colorScheme.error)
+                            },
                         )
                         OutlinedTextField(
                             label = { Text(text = "Second")},
                             value=secondUsage,
                             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                            onValueChange = secondChange,
-                            modifier = Modifier.weight(.2f)
+                            onValueChange = {
+                                secondChange(it)
+                                secondValidation(it)
+                            },
+                            modifier = Modifier.weight(.2f),
+                            keyboardActions = KeyboardActions{secondValidation(secondUsage)},
+                            isError = secondError,
+                            trailingIcon = {
+                                if (secondError)
+                                    Icon(Icons.Filled.Warning,"error", tint = MaterialTheme.colorScheme.error)
+                            },
                         )
                     }
                     // TODO: Get usage statistics here from UsageService
@@ -225,9 +288,13 @@ fun Content() {
                         }
                         TextButton(
                             onClick = {
-                                val timeLimit = "$hourUsage:$minuteUsage:$secondUsage"
-                                saveTimeLimit(context, resolvedInfoItem.activityInfo.packageName, timeLimit)
-                                selectedResolveInfo = -1
+                                if (!hourError && !minuteError && !secondError) {
+                                    val timeLimit = "$hourUsage:$minuteUsage:$secondUsage"
+                                    saveTimeLimit(context, resolvedInfoItem.activityInfo.packageName, timeLimit)
+                                    selectedResolveInfo = -1
+                                    blacklistedApps.add(resolvedInfoItem)
+                                    nonBlacklistedApps.remove(resolvedInfoItem)
+                                }
                             }
                         ) {
                             Text("Set usage")
@@ -270,3 +337,6 @@ fun loadTimeLimit(context: Context, packageName: String): String {
     return sharedPreferences.getString(packageName, "") ?: ""
 }
 
+fun isInteger(s: String): Boolean {
+    return s.toIntOrNull() != null
+}
