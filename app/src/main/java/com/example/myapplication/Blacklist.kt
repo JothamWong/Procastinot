@@ -127,16 +127,18 @@ fun Content(
         hourUsage = it
     }
 
-    Column(
+    // 2 additional items for the texts
+    val idxList = (0..blacklistedApps.size + nonBlacklistedApps.size + 1).toList()
+
+    LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = "Choose apps to unblacklist")
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            itemsIndexed(blacklistedApps) { idx, item ->
+        itemsIndexed(idxList) { _, idx ->
+            if (idx == 0) {
+                Text(text = "Choose apps to unblacklist")
+            } else if (idx <= blacklistedApps.size) {
+                val item: ResolveInfo = blacklistedApps[idx - 1]
                 ElevatedCard(
                     elevation = CardDefaults.cardElevation(
                         defaultElevation = 6.dp
@@ -162,48 +164,76 @@ fun Content(
                         //                    Text(text = item.resolvePackageName)
                     }
                 }
-            }
-        }
-    }
-    Text(text = "Choose apps to blacklist")
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        itemsIndexed(nonBlacklistedApps) { idx, item ->
-            ElevatedCard(
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 6.dp
-                ),
-                onClick = {
-                    selectedToBlacklistResolveInfo = idx
-                },
-                modifier = Modifier
-                    .size(width = 240.dp, height = 30.dp),
-            ) {
-                Row {
-                    Image(
-                        bitmap = getAppImageBitmap(pm, item),
-                        contentDescription = "app icon",
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = getAppName(pm, item),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .align(alignment = Alignment.CenterVertically)
-                    )
+            } else if (idx == blacklistedApps.size + 1) {
+                Text(text = "Choose apps to blacklist")
+            } else {
+                val item = nonBlacklistedApps[idx - blacklistedApps.size - 2]
+                ElevatedCard(
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 6.dp
+                    ),
+                    onClick = {
+                        selectedToBlacklistResolveInfo = idx
+                    },
+                    modifier = Modifier
+                        .size(width = 240.dp, height = 30.dp),
+                ) {
+                    Row {
+                        Image(
+                            bitmap = getAppImageBitmap(pm, item),
+                            contentDescription = "app icon",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = getAppName(pm, item),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .align(alignment = Alignment.CenterVertically)
+                        )
 //                    Text(text = item.resolvePackageName)
+                    }
                 }
             }
         }
     }
+//    Text(text = "Choose apps to blacklist")
+//    LazyColumn(
+//        modifier = Modifier.fillMaxWidth(),
+//        horizontalAlignment = Alignment.CenterHorizontally,
+//    ) {
+//        itemsIndexed(nonBlacklistedApps) { idx, item ->
+//            ElevatedCard(
+//                elevation = CardDefaults.cardElevation(
+//                    defaultElevation = 6.dp
+//                ),
+//                onClick = {
+//                    selectedToBlacklistResolveInfo = idx
+//                },
+//                modifier = Modifier
+//                    .size(width = 240.dp, height = 30.dp),
+//            ) {
+//                Row {
+//                    Image(
+//                        bitmap = getAppImageBitmap(pm, item),
+//                        contentDescription = "app icon",
+//                        modifier = Modifier.size(24.dp)
+//                    )
+//                    Text(
+//                        text = getAppName(pm, item),
+//                        textAlign = TextAlign.Center,
+//                        modifier = Modifier
+//                            .align(alignment = Alignment.CenterVertically)
+//                    )
+////                    Text(text = item.resolvePackageName)
+//                }
+//            }
+//        }
+//    }
 
     if (selectedToBlacklistResolveInfo != -1) {
         val resolvedInfoItem = nonBlacklistedApps[selectedToBlacklistResolveInfo]
         val packageName = resolvedInfoItem.activityInfo.packageName
         val savedTime = loadTimeLimit(context, packageName)
-        val splitSavedTime = savedTime.split(":")
 
         hourUsage = "00"
         minuteUsage = "00"
