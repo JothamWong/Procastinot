@@ -19,7 +19,7 @@ class MyAccessibilityService : AccessibilityService() {
     }
 
 
-    @RequiresApi(Build.VERSION_CODES.P)
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         println(event)
         if (event?.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
