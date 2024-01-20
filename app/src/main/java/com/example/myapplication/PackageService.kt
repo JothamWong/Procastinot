@@ -13,7 +13,7 @@ interface PackageService {
     // null when package has no limit
 
     @Composable
-    fun loadTimeLimit(packageName: Package): Duration? {
+    fun getLimit(packageName: Package): Duration? {
         val context = LocalContext.current
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
         val timeString = sharedPreferences.getString(packageName.name, null) ?: return null
