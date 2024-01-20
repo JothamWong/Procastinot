@@ -108,6 +108,16 @@ class MyAccessibilityService : AccessibilityService() {
                     println("$packageName's new track time starts at $currentTime")
                 }
             }
+            val scrollX = event.scrollDeltaX
+            val scrollY = event.scrollDeltaY
+            println(scrollY)
+//            if (scrollY >= 0){
+//                println("scrolling backwards")
+//                event.source?.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+//            }
+
+            // For now, we'll just log the scroll values
+            println("Scroll Event: X=$scrollX, Y=$scrollY")
         }
     }
 

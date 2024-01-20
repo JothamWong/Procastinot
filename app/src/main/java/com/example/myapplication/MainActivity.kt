@@ -1,6 +1,10 @@
 package com.example.myapplication
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -20,8 +24,40 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val OVERLAY_PERMISSION_REQUEST_CODE = 1
+    /** Requests an overlay permission to the user if needed. */
+    private fun requestOverlayPermission() {
+        if (isOverlayGranted()) {
+            OverlayService.start(this@MainActivity)
+            return
+        }
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+    }
+
+    /** Terminates the app if the user does not accept an overlay. */
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (!isOverlayGranted()) {
+                finish()  // Cannot continue if not granted
+            } else {
+                OverlayService.start(this@MainActivity)
+            }
+        }
+    }
+
+    /** Checks if the overlay is permitted. */
+    private fun isOverlayGranted() =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+//        requestOverlayPermission()
         setContent {
             MyApplicationTheme {
                 // A surface container using the 'background' color from the theme
@@ -32,6 +68,16 @@ class MainActivity : ComponentActivity() {
                     MainContent()
                 }
             }
+        }
+        getAllApps()
+    }
+
+    fun getAllApps() {
+        val packageList = packageManager.getInstalledApplications(PackageManager.MATCH_ALL)
+        println("Printing all apps!")
+        for (i in packageList.indices) {
+            val packageInfo = packageList[i]
+            println(packageInfo.packageName)
         }
     }
 }
@@ -56,6 +102,11 @@ fun MainContent() {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }) {
             Text("Open Accessibility Settings")
+        }
+        Button(onClick = {
+            context.startActivity(Intent(context, Blacklist::class.java))
+        }) {
+            Text(text = "Open Blacklist apps")
         }
     }
 }
