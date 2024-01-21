@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,9 +66,14 @@ class Blacklist : ComponentActivity() {
         }
 
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-        val resolvedInfoList = pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
-        val blacklistedApps = resolvedInfoList.filter { resolveInfo -> sharedPreferences.contains(resolveInfo.activityInfo.packageName) }.toMutableStateList()
-        val nonBlacklistedApps = resolvedInfoList.filter { resolveInfo -> !sharedPreferences.contains(resolveInfo.activityInfo.packageName) }.toMutableStateList()
+        val resolvedInfoList =
+            pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+        val blacklistedApps =
+            resolvedInfoList.filter { resolveInfo -> sharedPreferences.contains(resolveInfo.activityInfo.packageName) }
+                .toMutableStateList()
+        val nonBlacklistedApps =
+            resolvedInfoList.filter { resolveInfo -> !sharedPreferences.contains(resolveInfo.activityInfo.packageName) }
+                .toMutableStateList()
 
         super.onCreate(savedInstanceState)
         setContent {
@@ -89,10 +95,10 @@ class Blacklist : ComponentActivity() {
 
         fun getAppName(pm: PackageManager, resolveInfo: ResolveInfo): String {
             val resources = pm.getResourcesForApplication(resolveInfo.activityInfo.applicationInfo)
-            if (resolveInfo.activityInfo.labelRes != 0) {
-                return resources.getString(resolveInfo.activityInfo.labelRes)
+            return if (resolveInfo.activityInfo.labelRes != 0) {
+                resources.getString(resolveInfo.activityInfo.labelRes)
             } else {
-                return resolveInfo.activityInfo.applicationInfo.loadLabel(pm).toString()
+                resolveInfo.activityInfo.applicationInfo.loadLabel(pm).toString()
             }
         }
     }
@@ -101,7 +107,10 @@ class Blacklist : ComponentActivity() {
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Content(blacklistedApps: MutableList<ResolveInfo>, nonBlacklistedApps: MutableList<ResolveInfo>) {
+fun Content(
+    blacklistedApps: MutableList<ResolveInfo>,
+    nonBlacklistedApps: MutableList<ResolveInfo>
+) {
     val context = LocalContext.current
     val pm = context.packageManager
 
@@ -115,18 +124,21 @@ fun Content(blacklistedApps: MutableList<ResolveInfo>, nonBlacklistedApps: Mutab
     ) {
         itemsIndexed(idxList) { _, idx ->
             when {
-                idx == 0 -> Text(
-                    text = "Choose apps to unblacklist",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    ),
-                    textAlign = TextAlign.Center
-                )
+
+                idx == 0 -> if (blacklistedApps.size > 0) {
+                    Text(
+                        text = "Choose apps to unblacklist",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
 
                 idx <= blacklistedApps.size -> AppCard(blacklistedApps[idx - 1], pm, chosenIdx, idx)
                 idx == blacklistedApps.size + 1 -> Text(
@@ -141,6 +153,7 @@ fun Content(blacklistedApps: MutableList<ResolveInfo>, nonBlacklistedApps: Mutab
                     ),
                     textAlign = TextAlign.Center
                 )
+
                 else -> AppCard(
                     nonBlacklistedApps[idx - blacklistedApps.size - 2],
                     pm,
@@ -178,7 +191,9 @@ fun AppCard(item: ResolveInfo, pm: PackageManager, chosenIdx: MutableState<Int>,
             Image(
                 bitmap = getAppImageBitmap(pm, item),
                 contentDescription = "app icon",
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier
+                    .size(48.dp)
+                    .padding(bottom = 8.dp)
             )
             Column(
                 modifier = Modifier
@@ -209,7 +224,8 @@ fun AppDialog(
     blacklisted: Boolean
 ) {
     val pm = context.packageManager
-    val resolvedInfoItem = if (chosenIdx.value <= blacklistedApps.size) blacklistedApps[chosenIdx.value - 1] else nonBlacklistedApps[chosenIdx.value - blacklistedApps.size - 2]
+    val resolvedInfoItem =
+        if (chosenIdx.value <= blacklistedApps.size) blacklistedApps[chosenIdx.value - 1] else nonBlacklistedApps[chosenIdx.value - blacklistedApps.size - 2]
     val packageName = resolvedInfoItem.activityInfo.packageName
     val savedTime = loadTimeLimit(context, packageName)
     var savedMinutes = savedTime?.inWholeMinutes?.toInt() ?: 0
@@ -223,13 +239,15 @@ fun AppDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .wrapContentHeight()
+                .padding(4.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(10.dp),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -238,9 +256,18 @@ fun AppDialog(
                     contentDescription = "Card image",
                     modifier = Modifier.size(80.dp)
                 )
-                Text(getAppName(pm, resolvedInfoItem), style = MaterialTheme.typography.bodySmall)
+                Text(getAppName(pm, resolvedInfoItem), style = MaterialTheme.typography.titleMedium)
                 TimeInputFields(localHourUsage, localMinuteUsage)
-                DialogButtons(blacklistedApps, nonBlacklistedApps, resolvedInfoItem, localHourUsage, localMinuteUsage, context, chosenIdx, blacklisted)
+                DialogButtons(
+                    blacklistedApps,
+                    nonBlacklistedApps,
+                    resolvedInfoItem,
+                    localHourUsage,
+                    localMinuteUsage,
+                    context,
+                    chosenIdx,
+                    blacklisted
+                )
             }
         }
     }
@@ -250,21 +277,26 @@ fun AppDialog(
 fun TimeInputFields(hourUsage: MutableState<String>, minuteUsage: MutableState<String>) {
     Row(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .padding(4.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         OutlinedTextField(
             label = { Text(text = "Hour") },
             value = hourUsage.value,
             onValueChange = { hourUsage.value = it },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
         )
         OutlinedTextField(
             label = { Text(text = "Minute") },
             value = minuteUsage.value,
             onValueChange = { minuteUsage.value = it },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
         )
     }
@@ -341,13 +373,14 @@ fun DialogButtons(
                 modifier = Modifier
                     .fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             ) {
                 Text("Unblacklist")
             }
-        }}
+        }
+    }
 
 }
 
@@ -372,7 +405,7 @@ fun saveTimeLimit(context: Context, packageName: String, timeLimit: Duration) {
 
 fun loadTimeLimit(context: Context, packageName: String): Duration? {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-    val timeString =  sharedPreferences.getString(packageName, "")!!
+    val timeString = sharedPreferences.getString(packageName, "")!!
     return Duration.parseOrNull(timeString)
 }
 
