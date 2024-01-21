@@ -66,14 +66,10 @@ class Blacklist : ComponentActivity() {
         // Find main activities, disable finding system apps
         val context = this
         val pm = context.packageManager
-        val mainIntent = Intent(Intent.ACTION_MAIN, null)
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+
 
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-
-
-        var resolvedInfoList: List<ResolveInfo> =
-            pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+        val resolvedInfoList: List<ResolveInfo> = MainActivity.getAllApps(pm)
         var blacklistedApps: MutableList<ResolveInfo> =
             resolvedInfoList.filter { resolveInfo -> sharedPreferences.contains(resolveInfo.activityInfo.packageName) }
                 .toMutableStateList()
@@ -293,7 +289,8 @@ fun Content(
         }
 
         fun checkZero(s1: String, s2 : String): Boolean {
-            return s1 != "00" && s2 != "00"
+
+            return !(s1 == "00" && s2 == "00")
         }
 
         Dialog(

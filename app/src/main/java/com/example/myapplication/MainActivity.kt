@@ -3,6 +3,7 @@ package com.example.myapplication
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -69,15 +70,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        getAllApps()
     }
 
-    fun getAllApps() {
-        val packageList = packageManager.getInstalledApplications(PackageManager.MATCH_ALL)
-        println("Printing all apps!")
-        for (i in packageList.indices) {
-            val packageInfo = packageList[i]
-            println(packageInfo.packageName)
+    // Equivalent of static methods
+    companion object {
+        fun getAllApps(pm: PackageManager): List<ResolveInfo> {
+            val mainIntent = Intent(Intent.ACTION_MAIN, null)
+            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+            var resolvedInfoList: List<ResolveInfo> =
+                pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+            return resolvedInfoList
         }
     }
 }
