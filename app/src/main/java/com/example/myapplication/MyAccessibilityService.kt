@@ -8,6 +8,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.annotation.RequiresApi
 import java.time.Duration
 import java.time.Instant
+import kotlin.time.toKotlinDuration
 
 class MyAccessibilityService : AccessibilityService() {
     // in blacklist.kt, update blacklist, then call setter method here to update tracked packages
@@ -54,7 +55,7 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun handleWindowChangeEvent(packageName: String) {
         // Implementation of window change handling using packageName
         if(packageName != "null" && packageName != lastUsedPackage) {
@@ -96,6 +97,13 @@ class MyAccessibilityService : AccessibilityService() {
                         Log.d(TAG, "$packageName's new track time starts at $currentTime")
                     }
                 }
+            }
+
+            val limit = loadTimeLimit(applicationContext, packageName)
+            if (limit != null) {
+                OverlayService.instance.setDuration(limit.minus(appForegroundTime[packageName]!!.toKotlinDuration()))
+            } else {
+                OverlayService.instance.setDuration(null)
             }
 
             // Update lastUsedPackage
