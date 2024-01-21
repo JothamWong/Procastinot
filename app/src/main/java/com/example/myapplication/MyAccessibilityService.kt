@@ -29,6 +29,10 @@ class MyAccessibilityService : AccessibilityService() {
     private val appTrackEnd = hashMapOf<String, Instant>()
     private var isScrollLocked = hashMapOf<String, Boolean>()
 
+    public fun updateTrackPackages(packageName: String, duration: Duration) {
+        removeTrackPackages(packageName)
+        addTrackPackages(packageName, duration)
+    }
     public fun addTrackPackages(packageName: String, duration: Duration) {
         trackedPackages.set(packageName, duration)
     }

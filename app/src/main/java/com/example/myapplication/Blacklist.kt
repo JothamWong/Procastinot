@@ -53,6 +53,7 @@ import com.example.myapplication.ui.theme.MyApplicationTheme
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import kotlin.time.toJavaDuration
 
 class Blacklist : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -366,6 +367,7 @@ fun saveTimeLimit(context: Context, packageName: String, timeLimit: Duration) {
         putString(packageName, timeLimit.toString())
         apply()
     }
+    MyAccessibilityService.instance.updateTrackPackages(packageName, timeLimit.toJavaDuration())
 }
 
 fun loadTimeLimit(context: Context, packageName: String): Duration? {
@@ -380,5 +382,6 @@ fun removeTimeLimit(context: Context, packageName: String) {
         remove(packageName)
         apply()
     }
+    MyAccessibilityService.instance.removeTrackPackages(packageName)
 }
 
