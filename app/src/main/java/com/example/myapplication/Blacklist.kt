@@ -207,12 +207,11 @@ fun Content(
         }
     }
 
+    // blacklisted apps
     if (chosenIdx >= 1 && chosenIdx <= blacklistedApps.size) {
         val resolvedInfoItem = blacklistedApps[chosenIdx - 1]
         val packageName = resolvedInfoItem.activityInfo.packageName
         val savedTime = loadTimeLimit(context, packageName)
-        println("Package name: " + packageName)
-        println("Saved Time: " + savedTime)
 
         Dialog(
             onDismissRequest = { chosenIdx = -1 }
@@ -251,6 +250,10 @@ fun Content(
                         TextButton(
                             onClick = {
                                 chosenIdx = -1
+                                removeTimeLimit(
+                                    context,
+                                    packageName
+                                )
                                 nonBlacklistedApps.add(resolvedInfoItem)
                                 blacklistedApps.remove(resolvedInfoItem)
                             }
@@ -263,7 +266,7 @@ fun Content(
         }
     }
 
-
+    // unblacklisted apps
     if (chosenIdx >= blacklistedApps.size + 1) {
         val resolvedInfoItem = nonBlacklistedApps[chosenIdx - blacklistedApps.size - 2]
 
@@ -419,6 +422,14 @@ fun loadTimeLimit(context: Context, packageName: String): Duration? {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
     val timeString =  sharedPreferences.getString(packageName, "")!!
     return Duration.parseOrNull(timeString)
+}
+
+fun removeTimeLimit(context: Context, packageName: String) {
+    val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
+    sharedPreferences.edit().apply {
+        remove(packageName)
+        apply()
+    }
 }
 
 fun isInteger(s: String): Boolean {
