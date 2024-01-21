@@ -155,13 +155,11 @@ class MyAccessibilityService : AccessibilityService() {
             if (Duration.between(lastStartedTracking, currentTime).toHours() > 24) {
                 appTrackStart[packageName] = currentTime
                 appForegroundTime[packageName] = Duration.ZERO
-                // TODO: Reset scroll lock for package
                  isScrollLocked[packageName] = false
                 Log.d(TAG, "w0w new day new app")
                 Log.d(TAG, "$packageName's new track time starts at $currentTime")
             }
 
-            // TODO: Implement check whether app limit has exceeded and set scroll lock
             val limit = loadTimeLimit(applicationContext, packageName)
             if(timeSpent!!.toKotlinDuration() > limit!!) {
                 setScrollLock(packageName)
