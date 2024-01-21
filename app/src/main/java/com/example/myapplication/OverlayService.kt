@@ -30,7 +30,7 @@ class OverlayService : Service() {
         private const val ACTION_SHOW = "SHOW"
         private const val ACTION_HIDE = "HIDE"
 
-        lateinit var instance: OverlayService
+        var instance: OverlayService? = null
 
         fun start(context: Context) {
             val intent = Intent(context, OverlayService::class.java).apply {

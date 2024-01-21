@@ -70,7 +70,6 @@ class MyAccessibilityService : AccessibilityService() {
     private var lastUsedPackage = "deez nuts"
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        try {
             val packageName : String = event?.run {
                 windows.filter { it.isFocused }.singleOrNull()?.root?.packageName?.toString() ?: "unknown"
             } ?: "unknown"
@@ -79,9 +78,6 @@ class MyAccessibilityService : AccessibilityService() {
                 AccessibilityEvent.TYPE_WINDOWS_CHANGED -> handleWindowChangeEvent(packageName)
                 AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScrollEvent(event, packageName)
             }
-        } catch (e: NullPointerException) {
-            Log.e(TAG, "nope u fucked up")
-        }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
@@ -131,9 +127,9 @@ class MyAccessibilityService : AccessibilityService() {
 
             val limit = loadTimeLimit(applicationContext, packageName)
             if (limit != null) {
-                OverlayService.instance.setDuration(limit.minus(appForegroundTime[packageName]!!.toKotlinDuration()))
+                OverlayService.instance?.setDuration(limit.minus(appForegroundTime[packageName]!!.toKotlinDuration()))
             } else {
-                OverlayService.instance.setDuration(null)
+                OverlayService.instance?.setDuration(null)
             }
 
             // Update lastUsedPackage
