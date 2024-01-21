@@ -52,6 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.drawable.toBitmap
+import com.example.myapplication.Blacklist.Companion.getAppImageBitmap
+import com.example.myapplication.Blacklist.Companion.getAppName
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
@@ -66,7 +68,6 @@ class Blacklist : ComponentActivity() {
         // Find main activities, disable finding system apps
         val context = this
         val pm = context.packageManager
-
 
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
         val resolvedInfoList: List<ResolveInfo> = MainActivity.getAllApps(pm)
@@ -89,6 +90,21 @@ class Blacklist : ComponentActivity() {
                         nonBlacklistedApps
                     )
                 }
+            }
+        }
+    }
+
+    companion object {
+        fun getAppImageBitmap(pm: PackageManager, resolveInfo: ResolveInfo): ImageBitmap {
+            return resolveInfo.loadIcon(pm).toBitmap().asImageBitmap()
+        }
+
+        fun getAppName(pm: PackageManager, resolveInfo: ResolveInfo): String {
+            val resources = pm.getResourcesForApplication(resolveInfo.activityInfo.applicationInfo)
+            if (resolveInfo.activityInfo.labelRes != 0) {
+                return resources.getString(resolveInfo.activityInfo.labelRes)
+            } else {
+                return resolveInfo.activityInfo.applicationInfo.loadLabel(pm).toString()
             }
         }
     }
@@ -406,18 +422,6 @@ fun Content(
     }
 }
 
-fun getAppImageBitmap(pm: PackageManager, resolveInfo: ResolveInfo): ImageBitmap {
-    return resolveInfo.loadIcon(pm).toBitmap().asImageBitmap()
-}
-
-fun getAppName(pm: PackageManager, resolveInfo: ResolveInfo): String {
-    val resources = pm.getResourcesForApplication(resolveInfo.activityInfo.applicationInfo)
-    if (resolveInfo.activityInfo.labelRes != 0) {
-        return resources.getString(resolveInfo.activityInfo.labelRes)
-    } else {
-        return resolveInfo.activityInfo.applicationInfo.loadLabel(pm).toString()
-    }
-}
 
 fun saveTimeLimit(context: Context, packageName: String, timeLimit: Duration) {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)

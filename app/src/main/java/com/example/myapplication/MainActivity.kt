@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
         fun getAllApps(pm: PackageManager): List<ResolveInfo> {
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            var resolvedInfoList: List<ResolveInfo> =
+            val resolvedInfoList: List<ResolveInfo> =
                 pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
             return resolvedInfoList
         }

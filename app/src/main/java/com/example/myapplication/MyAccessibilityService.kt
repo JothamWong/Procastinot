@@ -1,6 +1,8 @@
 package com.example.myapplication
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.content.pm.ResolveInfo
 import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
@@ -8,6 +10,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.annotation.RequiresApi
 import java.time.Duration
 import java.time.Instant
+import kotlin.time.toJavaDuration
 
 class MyAccessibilityService : AccessibilityService() {
     // in blacklist.kt, update blacklist, then call setter method here to update tracked packages
@@ -15,14 +18,14 @@ class MyAccessibilityService : AccessibilityService() {
     private val TAG: String = "MyAccessibilityService"
 
     // TODO: Sync with persistent storage
-    private val trackedPackages = mutableSetOf<String>("com.reddit.frontpage") // default test
+    private val trackedPackages = hashMapOf<String, Duration>() // default test
     private val appForegroundTime = hashMapOf<String, Duration>()
     private val appTrackStart = hashMapOf<String, Instant>()
     private val appTrackEnd = hashMapOf<String, Instant>()
     private var isScrollLocked = hashMapOf<String, Boolean>()
 
-    public fun addTrackPackages(packageName: String) {
-        trackedPackages.add(packageName)
+    public fun addTrackPackages(packageName: String, duration: Duration) {
+        trackedPackages.set(packageName, duration)
     }
     public fun removeTrackPackages(packageName: String) {
         trackedPackages.remove(packageName)
@@ -32,10 +35,31 @@ class MyAccessibilityService : AccessibilityService() {
         isScrollLocked[packageName] = true
     }
     override fun onServiceConnected() {
+        val pm = this.applicationContext.packageManager
         super.onServiceConnected()
-        addTrackPackages("com.reddit.frontpage") // testing
+        val sharedPreferences = this.applicationContext.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
+
+        // Get all tracked packages
+
+        val resolvedInfoList: List<ResolveInfo> = MainActivity.getAllApps(pm)
+        for (resolveInfo in resolvedInfoList) {
+            val appName: String = resolveInfo.activityInfo!!.packageName
+            if (sharedPreferences.contains(appName)) {
+                val durationString = sharedPreferences.getString(appName, "")
+                val duration = kotlin.time.Duration.parseOrNull(durationString!!)!!.toJavaDuration()
+                trackedPackages.set(appName, duration)
+            }
+        }
+
+
+//        addTrackPackages("com.reddit.frontpage") // testing
         Log.d(TAG, "Service connected")
     }
+
+//    fun parseKotlinDuration(kotlinDurationString: String): Duration {
+//        val kotlinDuration = kotlin.time.Duration.ZERO
+//        kotlinDuration
+//    }
 
     private var lastUsedPackage = "deez nuts"
     @RequiresApi(Build.VERSION_CODES.P)
@@ -71,6 +95,7 @@ class MyAccessibilityService : AccessibilityService() {
                 appTrackEnd[lastUsedPackage] = currentTime
                 // Update total time spent
                 val timeSpent = Duration.between(appTrackStart[lastUsedPackage], currentTime)
+//                val timeSpent = currentTime.minusMillis(appTrackStart[lastUsedPackage]!!.toEpochMilli())
 //                val _timeSpent = currentTime.minus(appTrackStart[lastUsedPackage])
                 val prevTimeSpent = appForegroundTime.getOrDefault(lastUsedPackage, Duration.ZERO)
                 appForegroundTime[lastUsedPackage] = prevTimeSpent.plus(timeSpent)
