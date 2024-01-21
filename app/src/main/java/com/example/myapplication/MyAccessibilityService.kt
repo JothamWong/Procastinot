@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.annotation.RequiresApi
+import java.time.Duration
+import java.time.Instant
 
 class MyAccessibilityService : AccessibilityService() {
     // in blacklist.kt, update blacklist, then call setter method here to update tracked packages
@@ -14,9 +16,9 @@ class MyAccessibilityService : AccessibilityService() {
 
     // TODO: Sync with persistent storage
     private val trackedPackages = mutableSetOf<String>("com.reddit.frontpage") // default test
-    private val appForegroundTime = hashMapOf<String, Long>()
-    private val appTrackStart = hashMapOf<String, Long>()
-    private val appTrackEnd = hashMapOf<String, Long>()
+    private val appForegroundTime = hashMapOf<String, Duration>()
+    private val appTrackStart = hashMapOf<String, Instant>()
+    private val appTrackEnd = hashMapOf<String, Instant>()
     private var isScrollLocked = hashMapOf<String, Boolean>()
 
     public fun addTrackPackages(packageName: String) {
@@ -24,10 +26,6 @@ class MyAccessibilityService : AccessibilityService() {
     }
     public fun removeTrackPackages(packageName: String) {
         trackedPackages.remove(packageName)
-    }
-
-    public fun getAppForegroundTime(packageName: String): Long {
-        return appForegroundTime.getOrDefault(packageName, -1)
     }
 
     public fun setScrollLock(packageName: String) {
@@ -56,24 +54,26 @@ class MyAccessibilityService : AccessibilityService() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleWindowChangeEvent(packageName: String) {
         // Implementation of window change handling using packageName
         if(packageName != "null" && packageName != lastUsedPackage) {
             Log.d(TAG, "window to da balls changed")
             Log.d(TAG, "WINDOW: $packageName")
 
-            val currentTime = System.currentTimeMillis()
+            val currentTime = Instant.now()
 
             // A (lasUsedPackage) -switch-> B (packageName)
 
             // EXIT ROUTINE FOR A
-            if(trackedPackages.contains(lastUsedPackage)) {
+            if (trackedPackages.contains(lastUsedPackage)) {
                 // Update exit time of lastUsedPackage if lastUsedPackage is tracked
                 appTrackEnd[lastUsedPackage] = currentTime
                 // Update total time spent
-                val timeSpent = currentTime - appTrackStart[lastUsedPackage]!! // guaranteed because of dummy start package
-                val prevTimeSpent = appForegroundTime[lastUsedPackage]!!
-                appForegroundTime[lastUsedPackage] = prevTimeSpent + timeSpent
+                val timeSpent = Duration.between(appTrackStart[lastUsedPackage], currentTime)
+//                val _timeSpent = currentTime.minus(appTrackStart[lastUsedPackage])
+                val prevTimeSpent = appForegroundTime.getOrDefault(lastUsedPackage, Duration.ZERO)
+                appForegroundTime[lastUsedPackage] = prevTimeSpent.plus(timeSpent)
             }
 
             // ENTRY ROUTINE FOR B
@@ -83,15 +83,15 @@ class MyAccessibilityService : AccessibilityService() {
                 // Update entry time of packageName if packageName is tracked
                 if (!appTrackStart.containsKey(packageName)) {
                     appTrackStart[packageName] = currentTime
-                    appForegroundTime[packageName] = 0
+                    appForegroundTime[packageName] = Duration.ZERO
                     Log.d(TAG, "wow tracking virgin, popping app cherry")
                     Log.d(TAG, "$packageName's new track time starts at $currentTime")
                 } else {
                     // Check if it has been 24 hours since app was being tracked
                     val lastStartedTracking = appTrackStart[packageName]!!
-                    if (currentTime - lastStartedTracking > 1000 * 60 * 60 * 24) {
+                    if (Duration.between(lastStartedTracking, currentTime).toHours() > 24) {
                         appTrackStart[packageName] = currentTime
-                        appForegroundTime[packageName] = 0
+                        appForegroundTime[packageName] = Duration.ZERO
                         Log.d(TAG, "w0w new day new app")
                         Log.d(TAG, "$packageName's new track time starts at $currentTime")
                     }
@@ -106,11 +106,11 @@ class MyAccessibilityService : AccessibilityService() {
     @RequiresApi(Build.VERSION_CODES.P)
     private fun handleScrollEvent(event: AccessibilityEvent, packageName: String) {
         // Implementation of scroll event handling using packageName
-        if(trackedPackages.contains(packageName)) {
-            val currentTime = System.currentTimeMillis()
+        if (trackedPackages.contains(packageName)) {
+            val currentTime = Instant.now()
             val appStartTime = appTrackStart[packageName]!!
-            val timeSpent = currentTime - appStartTime
-            val totalTime = appForegroundTime[packageName]!! + timeSpent
+            val timeSpent = Duration.between(appStartTime, currentTime)
+            val totalTime = appForegroundTime.getOrDefault(packageName, Duration.ZERO).plus(timeSpent)
             appForegroundTime[packageName] = totalTime
 
             // Log usage values
@@ -119,9 +119,10 @@ class MyAccessibilityService : AccessibilityService() {
             Log.d(TAG, "Total app usage=$totalTime")
 
             // Check if it has been 24 hours since app was being tracked
-            if(totalTime > 1000 * 60 * 60 * 24) {
+            val lastStartedTracking = appTrackStart[packageName]!!
+            if (Duration.between(lastStartedTracking, currentTime).toHours() > 24) {
                 appTrackStart[packageName] = currentTime
-                appForegroundTime[packageName] = 0
+                appForegroundTime[packageName] = Duration.ZERO
                 // TODO: Reset scroll lock for package
                 // isScrollLocked[packageName] = false
                 Log.d(TAG, "w0w new day new app")
