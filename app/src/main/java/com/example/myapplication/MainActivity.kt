@@ -1,25 +1,26 @@
 package com.example.myapplication
 
+import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.provider.Settings.SettingNotFoundException
+import android.text.TextUtils.SimpleStringSplitter
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -60,6 +61,10 @@ class MainActivity : ComponentActivity() {
             } else {
                 OverlayService.start(this@MainActivity)
             }
+            navigateIfOk(this)
+        }
+        if (requestCode == 2) {
+            navigateIfOk(this)
         }
     }
 
@@ -67,9 +72,52 @@ class MainActivity : ComponentActivity() {
     private fun isOverlayGranted() =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
 
+    fun isAccessibilitySettingsOn(mContext: Context): Boolean {
+        var accessibilityEnabled = 0
+        val service = (mContext.packageName
+                + "/com.example.myapplication.MyAccessibilityService")
+        val accessibilityFound = false
+        try {
+            accessibilityEnabled = Settings.Secure.getInt(
+                mContext
+                    .applicationContext.contentResolver,
+                Settings.Secure.ACCESSIBILITY_ENABLED
+            )
+        } catch (e: SettingNotFoundException) {
+        }
+        val mStringColonSplitter = SimpleStringSplitter(
+            ':'
+        )
+        if (accessibilityEnabled == 1) {
+            val settingValue = Settings.Secure.getString(
+                mContext
+                    .applicationContext.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            if (settingValue != null) {
+                mStringColonSplitter.setString(settingValue)
+                while (mStringColonSplitter.hasNext()) {
+                    val accessabilityService = mStringColonSplitter.next()
+                    if (accessabilityService.equals(service, ignoreCase = true)) {
+                        return true
+                    }
+                }
+            }
+        }
+        return accessibilityFound
+    }
+
+    fun navigateIfOk(context: Context) {
+        val overlayOk = isOverlayGranted()
+        val accessOk = isAccessibilitySettingsOn(context)
+        if (overlayOk && accessOk) {
+
+        context.startActivity(Intent(context, Blacklist::class.java))
+    }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestOverlayPermission()
         setContent {
             MyApplicationTheme {
                 // A surface container using the 'background' color from the theme
@@ -77,7 +125,12 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainContent()
+                    MainContent(overlayAct = {
+                        requestOverlayPermission()
+                    }, accessibilityAct = {
+                        // Open Accessibility Settings
+                        startActivityForResult(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), 2)
+                    })
                 }
             }
         }
@@ -99,7 +152,7 @@ class MainActivity : ComponentActivity() {
 //background-image: linear-gradient(43deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
 
 @Composable
-fun MainContent() {
+fun MainContent(overlayAct: (Context) -> Unit, accessibilityAct: (Context)->Unit) {
     val context = LocalContext.current // Getting the current context
 
     val listColors = listOf(Color(0xff4158D0), Color(0xffC850C0), Color(0xffEECC70))
@@ -138,20 +191,14 @@ fun MainContent() {
         Text("Get your procrastination under control!", color = Color.White)
         Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
-                // TODO if both perms set just navigate lol
+                overlayAct(context)
             }) {
                 Text("Allow Overlay Permissions")
             }
         Button(onClick = {
-            // Open Accessibility Settings
-            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            accessibilityAct(context)
         }) {
             Text("Allow Accessibility Permissions")
-        }
-        Button(onClick = {
-            context.startActivity(Intent(context, Blacklist::class.java))
-        }) {
-            Text(text = "Open Blacklist apps")
         }
     } }
 }
@@ -160,6 +207,6 @@ fun MainContent() {
 @Composable
 fun MainContentPreview() {
     MyApplicationTheme {
-        MainContent()
+        MainContent(overlayAct = {}, accessibilityAct = {})
     }
 }
