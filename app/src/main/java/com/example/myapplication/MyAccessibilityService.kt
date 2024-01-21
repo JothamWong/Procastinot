@@ -160,17 +160,15 @@ class MyAccessibilityService : AccessibilityService() {
                 Log.d(TAG, "w0w new day new app")
                 Log.d(TAG, "$packageName's new track time starts at $currentTime")
             }
-        }
 
-        // TODO: Implement check whether app limit has exceeded and set scroll lock
-        val limit = loadTimeLimit(applicationContext, packageName)
-        val timeSpent = appForegroundTime[packageName]
-        if(timeSpent!!.toKotlinDuration() > limit!!) {
-            setScrollLock(packageName)
-            Log.d(TAG, "no m0re fun time 4 u on $packageName")
-        }
+            // TODO: Implement check whether app limit has exceeded and set scroll lock
+            val limit = loadTimeLimit(applicationContext, packageName)
+            if(timeSpent!!.toKotlinDuration() > limit!!) {
+                setScrollLock(packageName)
+                Log.d(TAG, "no m0re fun time 4 u on $packageName")
+            }
 
-        val scrollX = event.scrollDeltaX
+        }
         val scrollY = event.scrollDeltaY
         if (isScrollLocked.getOrDefault(packageName, false)){
             Log.d(TAG, "scrolling backwards")
@@ -178,7 +176,7 @@ class MyAccessibilityService : AccessibilityService() {
         }
 
         // For now, we'll just log the scroll values
-        Log.d(TAG, "Scroll Event: X=$scrollX, Y=$scrollY")
+        Log.d(TAG, "Scroll Event: Y=$scrollY")
 
     }
 
