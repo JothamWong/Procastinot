@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -143,35 +144,42 @@ fun Content(
             } else if (idx <= blacklistedApps.size) {
                 val item: ResolveInfo = blacklistedApps[idx - 1]
                 val packageName = item.activityInfo.packageName
+                val timeLimit = loadTimeLimit(context, packageName)
+
                 ElevatedCard(
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 6.dp
-                    ),
-                    onClick = {
-                        chosenIdx = idx
-                    },
-                    modifier = Modifier
-                        .size(width = 240.dp, height = 30.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    onClick = { chosenIdx = idx },
+                    modifier = Modifier.width(240.dp)
                         .padding(4.dp),
                 ) {
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(8.dp)
+                    ) {
                         Image(
                             bitmap = getAppImageBitmap(pm, item),
                             contentDescription = "app icon",
                             modifier = Modifier
-                                .size(24.dp)
-                                .padding(2.dp)
+                                .size(48.dp) // Adjust the size of the app icon
                         )
-                        Text(
-                            text = getAppName(pm, item) + " " + loadTimeLimit(context, packageName),
-                            textAlign = TextAlign.Center,
+                        Column(
                             modifier = Modifier
-                                .align(alignment = Alignment.CenterVertically)
-                        )
-                        //                    Text(text = item.resolvePackageName)
+                                .padding(start = 8.dp)
+                                .align(Alignment.CenterVertically)
+                        ) {
+                            Text(
+                                text = getAppName(pm, item),
+                                textAlign = TextAlign.Start
+                            )
+                            Text(
+                                text = "Limit: $timeLimit",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            } else if (idx == blacklistedApps.size + 1) {
+            }
+            else if (idx == blacklistedApps.size + 1) {
                 Text(text = "Choose apps to blacklist")
             } else {
                 val item = nonBlacklistedApps[idx - blacklistedApps.size - 2]
