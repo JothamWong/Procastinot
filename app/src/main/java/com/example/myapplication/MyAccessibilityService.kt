@@ -66,18 +66,14 @@ class MyAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Service connected")
     }
 
-//    fun parseKotlinDuration(kotlinDurationString: String): Duration {
-//        val kotlinDuration = kotlin.time.Duration.ZERO
-//        kotlinDuration
-//    }
-
     private var lastUsedPackage = "deez nuts"
     @RequiresApi(Build.VERSION_CODES.R)
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
             val packageName : String = event?.run {
                 windows.filter { it.isFocused }.singleOrNull()?.root?.packageName?.toString() ?: "unknown"
             } ?: "unknown"
-
+//            packageName.toString()
+//            Log.d(TAG, "packageName parsed as $packageName")
             when(event?.eventType) {
                 AccessibilityEvent.TYPE_WINDOWS_CHANGED -> handleWindowChangeEvent(packageName)
                 AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScrollEvent(event, packageName)
@@ -101,8 +97,6 @@ class MyAccessibilityService : AccessibilityService() {
                 appTrackEnd[lastUsedPackage] = currentTime
                 // Update total time spent
                 val timeSpent = Duration.between(appTrackStart[lastUsedPackage], currentTime)
-//                val timeSpent = currentTime.minusMillis(appTrackStart[lastUsedPackage]!!.toEpochMilli())
-//                val _timeSpent = currentTime.minus(appTrackStart[lastUsedPackage])
                 val prevTimeSpent = appForegroundTime.getOrDefault(lastUsedPackage, Duration.ZERO)
                 appForegroundTime[lastUsedPackage] = prevTimeSpent.plus(timeSpent)
             }
@@ -162,13 +156,19 @@ class MyAccessibilityService : AccessibilityService() {
                 appTrackStart[packageName] = currentTime
                 appForegroundTime[packageName] = Duration.ZERO
                 // TODO: Reset scroll lock for package
-                // isScrollLocked[packageName] = false
+                 isScrollLocked[packageName] = false
                 Log.d(TAG, "w0w new day new app")
                 Log.d(TAG, "$packageName's new track time starts at $currentTime")
             }
         }
 
         // TODO: Implement check whether app limit has exceeded and set scroll lock
+        val limit = loadTimeLimit(applicationContext, packageName)
+        val timeSpent = appForegroundTime[packageName]
+        if(timeSpent!!.toKotlinDuration() > limit!!) {
+            setScrollLock(packageName)
+            Log.d(TAG, "no m0re fun time 4 u on $packageName")
+        }
 
         val scrollX = event.scrollDeltaX
         val scrollY = event.scrollDeltaY
