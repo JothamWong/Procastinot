@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -52,6 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.drawable.toBitmap
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class Blacklist : ComponentActivity() {
 
@@ -62,14 +66,10 @@ class Blacklist : ComponentActivity() {
         // Find main activities, disable finding system apps
         val context = this
         val pm = context.packageManager
-        val mainIntent = Intent(Intent.ACTION_MAIN, null)
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+
 
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-
-
-        var resolvedInfoList: List<ResolveInfo> =
-            pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
+        val resolvedInfoList: List<ResolveInfo> = MainActivity.getAllApps(pm)
         var blacklistedApps: MutableList<ResolveInfo> =
             resolvedInfoList.filter { resolveInfo -> sharedPreferences.contains(resolveInfo.activityInfo.packageName) }
                 .toMutableStateList()
@@ -139,35 +139,43 @@ fun Content(
                 Text(text = "Choose apps to unblacklist")
             } else if (idx <= blacklistedApps.size) {
                 val item: ResolveInfo = blacklistedApps[idx - 1]
+                val packageName = item.activityInfo.packageName
+                val timeLimit = loadTimeLimit(context, packageName)
+
                 ElevatedCard(
-                    elevation = CardDefaults.cardElevation(
-                        defaultElevation = 6.dp
-                    ),
-                    onClick = {
-                        chosenIdx = idx
-                    },
-                    modifier = Modifier
-                        .size(width = 240.dp, height = 30.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    onClick = { chosenIdx = idx },
+                    modifier = Modifier.width(240.dp)
                         .padding(4.dp),
                 ) {
-                    Row {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(8.dp)
+                    ) {
                         Image(
                             bitmap = getAppImageBitmap(pm, item),
                             contentDescription = "app icon",
                             modifier = Modifier
-                                .size(24.dp)
-                                .padding(2.dp)
+                                .size(48.dp) // Adjust the size of the app icon
                         )
-                        Text(
-                            text = getAppName(pm, item),
-                            textAlign = TextAlign.Center,
+                        Column(
                             modifier = Modifier
-                                .align(alignment = Alignment.CenterVertically)
-                        )
-                        //                    Text(text = item.resolvePackageName)
+                                .padding(start = 8.dp)
+                                .align(Alignment.CenterVertically)
+                        ) {
+                            Text(
+                                text = getAppName(pm, item),
+                                textAlign = TextAlign.Start
+                            )
+                            Text(
+                                text = "Limit: $timeLimit",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            } else if (idx == blacklistedApps.size + 1) {
+            }
+            else if (idx == blacklistedApps.size + 1) {
                 Text(text = "Choose apps to blacklist")
             } else {
                 val item = nonBlacklistedApps[idx - blacklistedApps.size - 2]
@@ -203,12 +211,11 @@ fun Content(
         }
     }
 
+    // blacklisted apps
     if (chosenIdx >= 1 && chosenIdx <= blacklistedApps.size) {
         val resolvedInfoItem = blacklistedApps[chosenIdx - 1]
         val packageName = resolvedInfoItem.activityInfo.packageName
         val savedTime = loadTimeLimit(context, packageName)
-        println("Package name: " + packageName)
-        println("Saved Time: " + savedTime)
 
         Dialog(
             onDismissRequest = { chosenIdx = -1 }
@@ -247,6 +254,10 @@ fun Content(
                         TextButton(
                             onClick = {
                                 chosenIdx = -1
+                                removeTimeLimit(
+                                    context,
+                                    packageName
+                                )
                                 nonBlacklistedApps.add(resolvedInfoItem)
                                 blacklistedApps.remove(resolvedInfoItem)
                             }
@@ -259,17 +270,15 @@ fun Content(
         }
     }
 
-
+    // unblacklisted apps
     if (chosenIdx >= blacklistedApps.size + 1) {
         val resolvedInfoItem = nonBlacklistedApps[chosenIdx - blacklistedApps.size - 2]
 
         hourUsage = "00"
         minuteUsage = "00"
-        secondUsage = "00"
 
         var hourError = false
         var minuteError = false
-        var secondError = false
 
         fun hourValidation(s: String) {
             hourError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 23 && s.length <= 2)
@@ -279,8 +288,9 @@ fun Content(
             minuteError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
         }
 
-        fun secondValidation(s: String) {
-            secondError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
+        fun checkZero(s1: String, s2 : String): Boolean {
+
+            return !(s1 == "00" && s2 == "00")
         }
 
         Dialog(
@@ -357,26 +367,6 @@ fun Content(
                                     )
                             },
                         )
-                        OutlinedTextField(
-                            label = { Text(text = "Second") },
-                            value = secondUsage,
-                            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                            onValueChange = {
-                                secondChange(it)
-                                secondValidation(it)
-                            },
-                            modifier = Modifier.weight(.2f),
-                            keyboardActions = KeyboardActions { secondValidation(secondUsage) },
-                            isError = secondError,
-                            trailingIcon = {
-                                if (secondError)
-                                    Icon(
-                                        Icons.Filled.Warning,
-                                        "error",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                            },
-                        )
                     }
                     // TODO: Get usage statistics here from UsageService
                     Row(
@@ -391,8 +381,11 @@ fun Content(
                         }
                         TextButton(
                             onClick = {
-                                if (!hourError && !minuteError && !secondError) {
-                                    val timeLimit = "$hourUsage:$minuteUsage:$secondUsage"
+                                if (!hourError && !minuteError && checkZero(hourUsage, minuteUsage)) {
+                                    var hour = hourUsage.toInt()
+                                    var min = minuteUsage.toInt()
+                                    var totalMin = hour * 60 + min
+                                    val timeLimit = totalMin.toDuration(DurationUnit.MINUTES)
                                     saveTimeLimit(
                                         context,
                                         resolvedInfoItem.activityInfo.packageName,
@@ -426,17 +419,26 @@ fun getAppName(pm: PackageManager, resolveInfo: ResolveInfo): String {
     }
 }
 
-fun saveTimeLimit(context: Context, packageName: String, timeLimit: String) {
+fun saveTimeLimit(context: Context, packageName: String, timeLimit: Duration) {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
     sharedPreferences.edit().apply {
-        putString(packageName, timeLimit)
+        putString(packageName, timeLimit.toString())
         apply()
     }
 }
 
-fun loadTimeLimit(context: Context, packageName: String): String {
+fun loadTimeLimit(context: Context, packageName: String): Duration? {
     val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-    return sharedPreferences.getString(packageName, "") ?: ""
+    val timeString =  sharedPreferences.getString(packageName, "")!!
+    return Duration.parseOrNull(timeString)
+}
+
+fun removeTimeLimit(context: Context, packageName: String) {
+    val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
+    sharedPreferences.edit().apply {
+        remove(packageName)
+        apply()
+    }
 }
 
 fun isInteger(s: String): Boolean {

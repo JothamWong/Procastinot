@@ -11,22 +11,19 @@ import kotlin.time.toDuration
 
 interface PackageService {
     // null when package has no limit
-
     @Composable
-    fun getLimit(packageName: Package): Duration? {
+    fun getLimit(p: Package): Duration? {
         val context = LocalContext.current
         val sharedPreferences = context.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
-        val timeString = sharedPreferences.getString(packageName.name, null) ?: return null
+        val timeString = sharedPreferences.getString(p.name, null) ?: return null
 
         val timeParts = timeString.split(":").map { it.toIntOrNull() ?: 0 }
-        if (timeParts.size != 3) return null
+        if (timeParts.size != 2) return null
 
         val hours = timeParts[0]
         val minutes = timeParts[1]
-        val seconds = timeParts[2]
 
-        val totalSeconds: Int = hours * 3600 + minutes * 60 + seconds
-        return totalSeconds.toDuration(DurationUnit.SECONDS)
+        val totalMinutes: Int = hours * 60 + minutes
+        return totalMinutes.toDuration(DurationUnit.MINUTES)
     }
-
 }
