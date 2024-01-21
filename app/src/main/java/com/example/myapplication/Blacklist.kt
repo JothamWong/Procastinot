@@ -292,6 +292,10 @@ fun Content(
             minuteError = !(isInteger(s) && 0 <= s.toInt() && s.toInt() <= 59 && s.length <= 2)
         }
 
+        fun checkZero(s1: String, s2 : String): Boolean {
+            return s1 != "00" && s2 != "00"
+        }
+
         Dialog(
             onDismissRequest = { chosenIdx = -1 }
         ) {
@@ -380,7 +384,7 @@ fun Content(
                         }
                         TextButton(
                             onClick = {
-                                if (!hourError && !minuteError) {
+                                if (!hourError && !minuteError && checkZero(hourUsage, minuteUsage)) {
                                     var hour = hourUsage.toInt()
                                     var min = minuteUsage.toInt()
                                     var totalMin = hour * 60 + min
