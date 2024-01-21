@@ -18,6 +18,10 @@ class MyAccessibilityService : AccessibilityService() {
     // on initialization, blacklist.kt should expose a public fun to initialize the tracked packages
     private val TAG: String = "MyAccessibilityService"
 
+    companion object {
+        lateinit var instance: MyAccessibilityService
+    }
+
     // TODO: Sync with persistent storage
     private val trackedPackages = hashMapOf<String, Duration>() // default test
     private val appForegroundTime = hashMapOf<String, Duration>()
@@ -38,6 +42,7 @@ class MyAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         val pm = this.applicationContext.packageManager
         super.onServiceConnected()
+        instance = this
         val sharedPreferences = this.applicationContext.getSharedPreferences("AppTimeLimits", Context.MODE_PRIVATE)
 
         // Get all tracked packages
